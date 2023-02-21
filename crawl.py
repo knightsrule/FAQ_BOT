@@ -12,10 +12,15 @@ from selenium.webdriver.chrome.options import Options
 # Regex pattern to match a URL
 HTTP_URL_PATTERN = r'^http[s]*://.+'
 
-# Define root domain to crawl
-domain = "televox.com"
-full_url = "https://televox.com/"
 
+configFile = open("config.json", "r")
+config = json.loads(configFile.read())
+configFile.close()
+
+# Define root domain to crawl
+full_url = config["base_url"]
+# Parse the URL and get the domain
+local_domain = urlparse(full_url).netloc
 
 # Function to get html of a URL
 
@@ -57,7 +62,7 @@ def get_hyperlinks(soup):
 # Function to get the hyperlinks from a URL that are within the same domain
 
 
-def get_domain_hyperlinks(local_domain, soup):
+def get_domain_hyperlinks(soup):
     clean_links = []
     for link in set(get_hyperlinks(soup)):
         clean_link = None
@@ -91,8 +96,6 @@ def get_domain_hyperlinks(local_domain, soup):
 ################################################################################
 
 def crawl(url):
-    # Parse the URL and get the domain
-    local_domain = urlparse(url).netloc
 
     # Create a queue to store the URLs to crawl
     queue = deque([url])
@@ -110,6 +113,9 @@ def crawl(url):
     # Create a directory to store the csv files
     if not os.path.exists("processed"):
         os.mkdir("processed")
+
+    if not os.path.exists("processed/"+local_domain+"/"):
+        os.mkdir("processed/" + local_domain + "/")
 
     # While the queue is not empty, continue crawling
     while queue:
@@ -137,7 +143,7 @@ def crawl(url):
             f.write(text)
 
         # Get the hyperlinks from the URL and add them to the queue
-        for link in get_domain_hyperlinks(local_domain, soup):
+        for link in get_domain_hyperlinks(soup):
             if link not in seen:
                 queue.append(link)
                 seen.add(link)

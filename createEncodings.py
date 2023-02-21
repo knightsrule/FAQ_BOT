@@ -9,8 +9,17 @@ import tiktoken
 import openai
 from openai.embeddings_utils import distances_from_embeddings
 import numpy as np
+import json
+from urllib.parse import urlparse
 
-domain = "televox.com"
+configFile = open("config.json", "r")
+config = json.loads(configFile.read())
+configFile.close()
+
+# Define root domain to crawl
+full_url = config["base_url"]
+# Parse the URL and get the domain
+local_domain = urlparse(full_url).netloc
 
 
 def remove_newlines(serie):
@@ -28,11 +37,19 @@ def remove_newlines(serie):
 # Create a list to store the text files
 texts = []
 
+# Create a directory to store the csv files
+if not os.path.exists("processed"):
+    os.mkdir("processed")
+
+if not os.path.exists("processed/"+local_domain+"/"):
+    os.mkdir("processed/" + local_domain + "/")
+
+
 # Get all the text files in the text directory
-for file in os.listdir("text/" + domain + "/"):
+for file in os.listdir("text/" + local_domain + "/"):
 
     # Open the file and read the text
-    with open("text/" + domain + "/" + file, "r", encoding="UTF-8") as f:
+    with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
         text = f.read()
 
         # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
@@ -44,7 +61,7 @@ df = pd.DataFrame(texts, columns=['fname', 'text'])
 
 # Set the text column to be the raw text with the newlines removed
 df['text'] = df.fname + ". " + remove_newlines(df.text)
-df.to_csv('processed/scraped.csv')
+df.to_csv('processed/' + local_domain + '/scraped.csv')
 df.head()
 
 ################################################################################
@@ -54,7 +71,7 @@ df.head()
 # Load the cl100k_base tokenizer which is designed to work with the ada-002 model
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
-df = pd.read_csv('processed/scraped.csv', index_col=0)
+df = pd.read_csv('processed/' + local_domain + '/scraped.csv', index_col=0)
 df.columns = ['title', 'text']
 
 # Tokenize the text and save the number of tokens to a new column
@@ -139,5 +156,5 @@ df.n_tokens.hist()
 
 df['embeddings'] = df.text.apply(lambda x: openai.Embedding.create(
     input=x, engine='text-embedding-ada-002')['data'][0]['embedding'])
-df.to_csv('processed/embeddings.csv')
+df.to_csv('processed/' + local_domain + '/embeddings.csv')
 df.head()

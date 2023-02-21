@@ -2,12 +2,23 @@ import openai
 from openai.embeddings_utils import distances_from_embeddings
 import pandas as pd
 import numpy as np
+import json
+from urllib.parse import urlparse
+
+configFile = open("config.json", "r")
+config = json.loads(configFile.read())
+configFile.close()
+
+# Define root domain to crawl
+full_url = config["base_url"]
+# Parse the URL and get the domain
+local_domain = urlparse(full_url).netloc
 
 ################################################################################
 # Step 11
 ################################################################################
 
-df = pd.read_csv('processed/embeddings.csv', index_col=0)
+df = pd.read_csv('processed/' + local_domain + '/embeddings.csv', index_col=0)
 df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 
 df.head()
@@ -101,4 +112,4 @@ def answer_question(
 text = input("Ask me a question about televox:")
 while text:
     print(answer_question(df, question=text, debug=False))
-    text = input("Ask me a question about televox:")
+    text = input("Ask me a question: ")
