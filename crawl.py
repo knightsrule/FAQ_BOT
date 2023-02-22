@@ -20,7 +20,7 @@ configFile.close()
 # Define root domain to crawl
 full_url = config["base_url"]
 
-if config['max_level']:
+if 'max_level' in config:
     MAX_LEVEL = config["max_level"]
 else:
     MAX_LEVEL = 50
