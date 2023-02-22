@@ -19,21 +19,22 @@ configFile.close()
 
 # Define root domain to crawl
 full_url = config["base_url"]
+
+if config['max_level']:
+    MAX_LEVEL = config["max_level"]
+else:
+    MAX_LEVEL = 50
+
 # Parse the URL and get the domain
 local_domain = urlparse(full_url).netloc
 
 # Function to get html of a URL
 
 
-def fetch_url_selenium(url):
-
-    options = Options()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(options=options)
+def fetch_url_selenium(driver, url):
 
     driver.get(url)
     html = driver.page_source
-    driver.quit()
     return html
 
 ################################################################################
@@ -49,8 +50,9 @@ def get_hyperlinks(soup):
     alllinks = soup.find_all('a')
     cleanLinks = []
     for link in alllinks:
-        # print(link)
-        cleanLinks.append(link["href"])
+
+        if link.has_attr('href'):
+            cleanLinks.append(link["href"])
 
     return cleanLinks
 
@@ -98,7 +100,7 @@ def get_domain_hyperlinks(soup):
 def crawl(url):
 
     # Create a queue to store the URLs to crawl
-    queue = deque([url])
+    queue = deque([{"url": url, "level": 1}])
 
     # Create a set to store the URLs that have already been seen (no duplicates)
     seen = set([url])
@@ -117,36 +119,51 @@ def crawl(url):
     if not os.path.exists("processed/"+local_domain+"/"):
         os.mkdir("processed/" + local_domain + "/")
 
+    options = Options()
+    options.add_argument("--headless")
+    driver = webdriver.Chrome(options=options)
+
     # While the queue is not empty, continue crawling
     while queue:
 
         # Get the next URL from the queue
-        url = queue.pop()
-        print(url)  # for debugging and to see the progress
+        entry = queue.pop()
+        url = entry['url']
+        level = entry['level']
 
-        html = fetch_url_selenium(url)
-        # Get the text from the URL using BeautifulSoup
-        soup = BeautifulSoup(html, "html.parser")
+        if level <= MAX_LEVEL:
 
-        # Get the text but remove the tags
-        text = soup.get_text()
+            # for debugging and to see the progress
+            print('processing: ' + url + ' at level ' + str(level))
 
-        # Save text from the url to a <url>.txt file
-        with open('text/'+local_domain+'/'+url[8:].replace("/", "_") + ".txt", "w", encoding="UTF-8") as f:
+            html = fetch_url_selenium(driver, url)
+            # Get the text from the URL using BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
 
-            # If the crawler gets to a page that requires JavaScript, it will stop the crawl
-            if ("You need to enable JavaScript to run this app." in text):
-                print("Unable to parse page " + url +
-                      " due to JavaScript being required")
+            # Get the text but remove the tags
+            text = soup.get_text()
 
-            # Otherwise, write the text to the file in the text directory
-            f.write(text)
+            # Save text from the url to a <url>.txt file
+            with open('text/'+local_domain+'/'+url[8:].replace("/", "_") + ".txt", "w", encoding="UTF-8") as f:
 
-        # Get the hyperlinks from the URL and add them to the queue
-        for link in get_domain_hyperlinks(soup):
-            if link not in seen:
-                queue.append(link)
-                seen.add(link)
+                # If the crawler gets to a page that requires JavaScript, it will stop the crawl
+                if ("You need to enable JavaScript to run this app." in text):
+                    print("Unable to parse page " + url +
+                          " due to JavaScript being required")
+
+                # Otherwise, write the text to the file in the text directory
+                f.write(text)
+
+            # Get the hyperlinks from the URL and add them to the queue
+            for link in get_domain_hyperlinks(soup):
+                if link not in seen:
+                    queue.append({'url': link, 'level': level + 1})
+                    seen.add(link)
+        else:
+            print(url + ' at level ' + str(level) + ' is too deep')
+
+    # terminate the selenium driver
+    driver.quit()
 
 
 crawl(full_url)
