@@ -107,7 +107,7 @@ def answer_question(
 ################################################################################
 
 
-text = input("Ask me a question about televox:")
+text = input("Ask me a question: ")
 while text:
     print(answer_question(df, question=text, debug=False))
     text = input("Ask me a question: ")

@@ -48,14 +48,13 @@ for file in os.listdir("text/" + local_domain + "/"):
     # Open the file and read the text
     with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
         text = f.read()
-        print(file, '\n', file[11:-4]
-              .replace('-', ' ')
-              .replace('_', ' ')
-              .replace('#update', ''), '\n\n')
+        # print(file, '\n', file[11:-4]
+        #      .replace('-', ' ')
+        #      .replace('_', ' ')
+        #      .replace('#update', ''), '\n\n')
+
         # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
-        texts.append(
-            (
-                file, text))
+        texts.append((file, text))
 
 # Create a dataframe from the list of texts
 df = pd.DataFrame(texts, columns=['fname', 'text'])
@@ -155,7 +154,7 @@ df.n_tokens.hist()
 # Step 10
 ################################################################################
 
-# df['embeddings'] = df.text.apply(lambda x: openai.Embedding.create(
-#    input=x, engine='text-embedding-ada-002')['data'][0]['embedding'])
-# df.to_csv('processed/' + local_domain + '/embeddings.csv')
-# df.head()
+df['embeddings'] = df.text.apply(lambda x: openai.Embedding.create(
+    input=x, engine='text-embedding-ada-002')['data'][0]['embedding'])
+df.to_csv('processed/' + local_domain + '/embeddings.csv')
+df.head()
