@@ -13,6 +13,7 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
 import logging
+from config_parser import parse_config
 
 
 class SiteDownloadSpider(scrapy.Spider):
@@ -114,6 +115,9 @@ class SiteDownloadSpider(scrapy.Spider):
         base_domain = urlparse(base_url).netloc
         url = response.url
 
+        if url.endswith('/'):
+            url = url[:-1]
+
         depth = response.meta.get('depth', 0)
         if depth > self.MAX_DEPTH:
             print(url, ' at depth ', depth, " is too deep")
@@ -163,35 +167,19 @@ class SiteDownloadSpider(scrapy.Spider):
                 print("Previously visited link: ", link)
 
 
-# Define the command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "url", help="root url of the site that needs to be analyzed")
-parser.add_argument(
-    "-depth", '--depth', help="how deep should the site be analyzed. default is 3", required=False)
-parser.add_argument('-log_level', "--log_level", help="set log level",
-                    choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+start_url, depth, log_level = parse_config()
 
-# Parse the command line arguments
-args = parser.parse_args()
+# logging.getLogger().setLevel(log_level)
+# configure_logging({'LOG_LEVEL': log_level})
 
-url = args.url
-depth = args.depth or 3
-log_level = args.log_level or get_project_settings().get("LOG_LEVEL")
-print("params are: ", url, depth, log_level)
-
-logging.getLogger().setLevel(log_level)
-configure_logging({'LOG_LEVEL': log_level})
-
-print('new log level: ', get_project_settings().get("LOG_LEVEL"))
 
 # Create a new Scrapy process
-process = CrawlerProcess()
+# process = CrawlerProcess()
 
 # process = CrawlerProcess({
 #    'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'
 # })
 
-process.crawl(SiteDownloadSpider, input='inputargument', url=url, depth=depth)
+# process.crawl(SiteDownloadSpider, input='inputargument', url=start_url, depth=depth)
 
-process.start()  # the script will block here until the crawling is finished
+# process.start()  # the script will block here until the crawling is finished

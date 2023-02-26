@@ -1,4 +1,4 @@
 {
-  "base_url": "https://chop.edu/",
-  "max_level": 1
+  "url": "https://chop.edu/",
+  "depth": 1
 }

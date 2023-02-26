@@ -4,15 +4,13 @@ import pandas as pd
 import numpy as np
 import json
 from urllib.parse import urlparse
+from config_parser import parse_config
 
-configFile = open("config.json", "r")
-config = json.loads(configFile.read())
-configFile.close()
+start_url, depth, log_level = parse_config()
 
-# Define root domain to crawl
-full_url = config["base_url"]
 # Parse the URL and get the domain
-local_domain = urlparse(full_url).netloc
+local_domain = urlparse(start_url).netloc
+
 
 ################################################################################
 # Step 11
