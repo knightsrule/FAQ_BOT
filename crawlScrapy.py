@@ -29,6 +29,7 @@ class SiteDownloadSpider(scrapy.Spider):
 
         self.MAX_DEPTH = int(getattr(self, 'depth', 3))
         self.BASE_URL = getattr(self, 'url', '')
+        self.BASE_URL_DETAILS = urlparse(self.BASE_URL)
 
         print("in the constructor: ", self.BASE_URL, self.MAX_DEPTH)
         self.visited_links = set()
@@ -51,7 +52,7 @@ class SiteDownloadSpider(scrapy.Spider):
 
         return text
 
-    def get_domain_hyperlinks(self, response, root_domain):
+    def get_domain_hyperlinks(self, response):
 
         clean_links = []
 
@@ -67,7 +68,7 @@ class SiteDownloadSpider(scrapy.Spider):
             if re.search(self.HTTP_URL_PATTERN, link_url):
                 # Parse the URL and check if the domain is the same
                 url_obj = urlparse(link_url)
-                if url_obj.netloc == root_domain:
+                if url_obj.netloc == self.BASE_URL_DETAILS.netloc:
                     clean_link = link_url
 
             # If the link is not a URL, check if it is a relative link
@@ -76,7 +77,8 @@ class SiteDownloadSpider(scrapy.Spider):
                     link_url = link_url[1:]
                 elif link_url.startswith("#") or link_url.startswith("mailto:") or link_url.startswith("tel:"):
                     continue
-                clean_link = "https://" + root_domain + "/" + link_url
+                clean_link = self.BASE_URL_DETAILS.scheme + "://" + \
+                    self.BASE_URL_DETAILS.netloc + "/" + link_url
 
             if clean_link is not None:
                 if clean_link.endswith("/"):
@@ -89,19 +91,15 @@ class SiteDownloadSpider(scrapy.Spider):
     def start_requests(self):
 
         if self.BASE_URL:
-            # Define root domain to crawl
-            full_url = self.BASE_URL
-            # Parse the URL and get the domain
-            local_domain = urlparse(full_url).netloc
 
             # Create a directory to store the text files
             if not os.path.exists("text/"):
                 os.mkdir("text/")
 
-            if not os.path.exists("text/"+local_domain+"/"):
-                os.mkdir("text/" + local_domain + "/")
+            if not os.path.exists("text/"+self.BASE_URL_DETAILS.netloc+"/"):
+                os.mkdir("text/" + self.BASE_URL_DETAILS.netloc + "/")
 
-            yield scrapy.Request(url=full_url, callback=self.parse, meta={'depth': 1, 'base_url': full_url})
+            yield scrapy.Request(url=self.BASE_URL, callback=self.parse, meta={'depth': 1})
         else:
             print('no base url found')
 
@@ -111,8 +109,6 @@ class SiteDownloadSpider(scrapy.Spider):
         # else:
         #    self.visited_links.add(response.url)
 
-        base_url = response.meta.get('base_url', response.url)
-        base_domain = urlparse(base_url).netloc
         url = response.url
 
         if url.endswith('/'):
@@ -130,7 +126,9 @@ class SiteDownloadSpider(scrapy.Spider):
         #    f.write(response.body.decode("utf-8"))
 
         # Save text from the url to a <url>.txt file
-        with open('text/'+base_domain+'/'+url[8:].replace("/", "_") + ".txt", "w", encoding="UTF-8") as f:
+        fileName = 'text/' + self.BASE_URL_DETAILS.netloc + '/' + \
+            url[len(self.BASE_URL_DETAILS.scheme + '://'):].replace(".html", '').replace("/", "_") + ".txt"
+        with open(fileName, "w", encoding="UTF-8") as f:
 
             # Print the header of the page
             # header = response.xpath('//head').get()
@@ -155,14 +153,14 @@ class SiteDownloadSpider(scrapy.Spider):
             f.write(body_text)
 
         # get links from the current page
-        subLinks = self.get_domain_hyperlinks(response, base_domain)
+        subLinks = self.get_domain_hyperlinks(response)
 
         # tee up new links for traversal
         for link in subLinks:
             if link not in self.visited_links:
                 print("New link found: ", link)
                 self.visited_links.add(link)
-                yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1, 'base_url': base_url})
+                yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1})
             else:
                 print("Previously visited link: ", link)
 
