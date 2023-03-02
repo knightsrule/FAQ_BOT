@@ -6,7 +6,7 @@ import json
 from urllib.parse import urlparse
 from config_parser import parse_config
 
-start_url, depth, log_level = parse_config()
+start_url, depth, log_level, pdfURL = parse_config()
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc

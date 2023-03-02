@@ -20,5 +20,5 @@ def parse_config():
     start_url = config["start_url"]
     depth = config.get("depth", 3)
     log_level = config.get('log_level', "DEBUG")
-
-    return start_url, depth, log_level
+    secPDFURL = config.get("secPDFURL", "")
+    return start_url, depth, log_level, secPDFURL
