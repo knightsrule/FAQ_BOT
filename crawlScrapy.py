@@ -32,6 +32,8 @@ class SiteDownloadSpider(scrapy.Spider):
         self.BASE_URL = getattr(self, 'url', '')
         self.BASE_URL_DETAILS = urlparse(self.BASE_URL)
         self.secPDFURL = getattr(self, 'secPDFURL', '')
+        self.ifSaveHTML = getattr(self, 'ifSaveHTML', False)
+        
         print("in the constructor: ", self.BASE_URL, self.MAX_DEPTH)
         self.visited_links = set()
 
@@ -148,19 +150,7 @@ class SiteDownloadSpider(scrapy.Spider):
             f.write(text)
             # print('length of text is: ', len(text))
 
-    def getSimplifiedHTML(self, response, fileName):
-
-        # html_doc = html.fromstring(response.text)
-
-        # Remove script tags using xpath selector
-        # for script_tag in html_doc.xpath('//script'):
-        #    script_tag.getparent().remove(script_tag)
-
-        # Create a new HTML response with the modified HTML content
-        # new_body = html.tostring(html_doc, encoding='unicode')
-
-        # Remove script, style, and link tags from the HTML
-        # soup = BeautifulSoup(response.text, 'html.parser')
+    def saveSimplifiedHTML(self, response, fileName):
 
         body = scrapy.Selector(response).xpath('//body').getall()
         soup = BeautifulSoup(''.join(body), 'html.parser')
@@ -186,36 +176,21 @@ class SiteDownloadSpider(scrapy.Spider):
                 tag['href'] = new_href
 
         clean_html = soup.prettify()
-        return self.remove_newlines(clean_html)
 
-    def parse(self, response):
-        # if response.url in self.visited_links:
-        #    return
-        # else:
-        #    self.visited_links.add(response.url)
-
-        url = response.url
-
-        if url.endswith('/'):
-            url = url[:-1]
-
-        depth = response.meta.get('depth', 0)
-        if depth > self.MAX_DEPTH:
-            print(url, ' at depth ', depth, " is too deep")
-            return
+        if fileName:
+            with open(fileName, "w", encoding="UTF-8") as f:
+                f.write(clean_html)
+                f.close()
         else:
-            print("processing: ", url)
+            print("fileName in saveSimplifiedHTML is empty")
 
-        # Save text from the url to a <url>.txt file
-        fileName = 'text/' + self.BASE_URL_DETAILS.netloc + '/' + \
-            url[len(self.BASE_URL_DETAILS.scheme + '://'):].replace(".html", '').replace("/", "_") + ".html"
-        with open(fileName, "w", encoding="UTF-8") as f:
-            f.write(self.getSimplifiedHTML(response, ""))
-            f.close()
 
-        fileName = 'text/' + self.BASE_URL_DETAILS.netloc + '/' + \
-            url[len(self.BASE_URL_DETAILS.scheme + '://')                :].replace(".html", '').replace("/", "_") + ".txt"
+    def saveTextFile(self, response, fileName):
 
+        if not fileName:
+            print("file name in saveTextFile is empty")
+            return
+        
         with open(fileName, "w", encoding="UTF-8") as f:
 
             # Print the header of the page
@@ -240,6 +215,33 @@ class SiteDownloadSpider(scrapy.Spider):
 
             f.write(body_text)
 
+    def parse(self, response):
+
+        depth = response.meta.get('depth', 0)
+        if depth > self.MAX_DEPTH:
+            print(url, ' at depth ', depth, " is too deep")
+            return
+        else:
+            print("processing: ", url)
+
+        url = response.url
+        if url.endswith('/'):
+            url = url[:-1]
+
+        url_info = urlparse(url)
+        if url_info.path:
+            file_info = os.path.splitext(url.path)
+            file_info[0] = file_info[0].replace("/", "_")
+            fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/' + file_info[0]
+        else:
+            fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/unknown'
+
+        if ifSaveHTML:
+            self.saveSimplifiedHTML(response, fileNameBase + ".html")
+
+        #always save the text file
+        self.saveTextFile(response, fileNameBase + ".txt")
+
         # if the current page is not deep enough in the depth hierarchy, download more content
         if depth < self.MAX_DEPTH:
             # get links from the current page
@@ -255,7 +257,7 @@ class SiteDownloadSpider(scrapy.Spider):
                     print("Previously visited link: ", link)
 
 
-start_url, depth, log_level, secPDFURL = parse_config()
+start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
 
 # logging.getLogger().setLevel(log_level)
 # configure_logging({'LOG_LEVEL': log_level})
@@ -269,6 +271,6 @@ process = CrawlerProcess()
 # })
 
 process.crawl(SiteDownloadSpider, input='inputargument',
-              url=start_url, depth=depth, secPDFURL=secPDFURL)
+              url=start_url, depth=depth, secPDFURL=secPDFURL, ifSaveHTML=ifSaveHTML)
 
 process.start()  # the script will block here until the crawling is finished
