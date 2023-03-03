@@ -33,7 +33,7 @@ class SiteDownloadSpider(scrapy.Spider):
         self.BASE_URL_DETAILS = urlparse(self.BASE_URL)
         self.secPDFURL = getattr(self, 'secPDFURL', '')
         self.ifSaveHTML = getattr(self, 'ifSaveHTML', False)
-        
+
         print("in the constructor: ", self.BASE_URL, self.MAX_DEPTH)
         self.visited_links = set()
 
@@ -78,6 +78,7 @@ class SiteDownloadSpider(scrapy.Spider):
             clean_link = self.BASE_URL_DETAILS.scheme + "://" + \
                 self.BASE_URL_DETAILS.netloc + "/" + link_url
 
+            print("old link: ", link_url, " new link: ", clean_link)
         if clean_link is not None:
             if clean_link.endswith("/"):
                 clean_link = clean_link[:-1]
@@ -170,10 +171,17 @@ class SiteDownloadSpider(scrapy.Spider):
             del element['class']
 
         for tag in soup.find_all('a'):
-            current_href = getattr(tag, 'href', '')
-            if current_href:
+            current_href = tag.get('href')
+            if current_href and not current_href.startswith(('tel:', 'mailto:')):
                 new_href = self.createCleanLink(current_href, False)
-                tag['href'] = new_href
+                if new_href != current_href:
+                    tag['href'] = new_href
+                    print("in save html, link cleanup. old link: ",
+                          current_href, " new link: ", new_href)
+                else:
+                    print('same href')
+            else:
+                print("no href")
 
         clean_html = soup.prettify()
 
@@ -184,13 +192,12 @@ class SiteDownloadSpider(scrapy.Spider):
         else:
             print("fileName in saveSimplifiedHTML is empty")
 
-
     def saveTextFile(self, response, fileName):
 
         if not fileName:
             print("file name in saveTextFile is empty")
             return
-        
+
         with open(fileName, "w", encoding="UTF-8") as f:
 
             # Print the header of the page
@@ -217,6 +224,7 @@ class SiteDownloadSpider(scrapy.Spider):
 
     def parse(self, response):
 
+        url = response.url
         depth = response.meta.get('depth', 0)
         if depth > self.MAX_DEPTH:
             print(url, ' at depth ', depth, " is too deep")
@@ -224,22 +232,22 @@ class SiteDownloadSpider(scrapy.Spider):
         else:
             print("processing: ", url)
 
-        url = response.url
         if url.endswith('/'):
             url = url[:-1]
 
         url_info = urlparse(url)
         if url_info.path:
-            file_info = os.path.splitext(url.path)
+            file_info = os.path.splitext(url_info.path)
             file_info[0] = file_info[0].replace("/", "_")
-            fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/' + file_info[0]
+            fileNameBase = 'text/' + \
+                self.BASE_URL_DETAILS.netloc + '/' + file_info[0]
         else:
-            fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/unknown'
+            fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/home'
 
         if ifSaveHTML:
             self.saveSimplifiedHTML(response, fileNameBase + ".html")
 
-        #always save the text file
+        # always save the text file
         self.saveTextFile(response, fileNameBase + ".txt")
 
         # if the current page is not deep enough in the depth hierarchy, download more content
