@@ -3,3 +3,4 @@ text
 py_env
 __pycache__
 .DS_Store
+config*.json
