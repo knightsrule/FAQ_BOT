@@ -13,7 +13,7 @@ import json
 from urllib.parse import urlparse
 from config_parser import parse_config
 
-start_url, depth, log_level, pdfURL = parse_config()
+start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc
@@ -45,16 +45,19 @@ if not os.path.exists("processed/"+local_domain+"/"):
 # Get all the text files in the text directory
 for file in os.listdir("text/" + local_domain + "/"):
 
-    # Open the file and read the text
-    with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
-        text = f.read()
-        # print(file, '\n', file[11:-4]
-        #      .replace('-', ' ')
-        #      .replace('_', ' ')
-        #      .replace('#update', ''), '\n\n')
+    file_info = list(os.path.splitext(file))
+    if file_info[1] and file_info[1] == ".txt":
 
-        # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
-        texts.append((file, text))
+        # Open the file and read the text
+        with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
+            text = f.read()
+            # print(file, '\n', file[11:-4]
+            #      .replace('-', ' ')
+            #      .replace('_', ' ')
+            #      .replace('#update', ''), '\n\n')
+
+            # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
+            texts.append((file, text))
 
 # Create a dataframe from the list of texts
 df = pd.DataFrame(texts, columns=['fname', 'text'])
