@@ -8,8 +8,8 @@ from bs4 import BeautifulSoup, Comment
 from config_parser import parse_config
 
 setPrint = {"h1", "h2", "h3", "h4", "h5", "h6",
-            "p", "li", "a", "span", "em", "strong", "u", "sub", "small"}
-setContainers = {"label", "div", "header",
+            "p", "li", "a", "span", "em", "strong", "u", "sub", "small", "address"}
+setContainers = {"main", "label", "div", "header",
                  "section", "noscript", "ul", "iframe", "body", "nav", "input", "article", "br", "img", "hr", "aside", "content", "table", "tr", "th", "time", "sup", "ol", "tbody", "td"}
 
 
