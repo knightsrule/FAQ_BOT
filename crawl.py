@@ -34,7 +34,7 @@ class SiteDownloadSpider(scrapy.Spider):
         self.secPDFURL = getattr(self, 'secPDFURL', '')
         self.ifSaveHTML = getattr(self, 'ifSaveHTML', False)
 
-        print("in the constructor: ", self.BASE_URL, self.MAX_DEPTH)
+        # print("in the constructor: ", self.BASE_URL, self.MAX_DEPTH)
         self.visited_links = set()
 
     # replace all occurences of src string in text with dest
@@ -78,7 +78,7 @@ class SiteDownloadSpider(scrapy.Spider):
             clean_link = self.BASE_URL_DETAILS.scheme + "://" + \
                 self.BASE_URL_DETAILS.netloc + "/" + link_url
 
-            print("old link: ", link_url, " new link: ", clean_link)
+            # print("old link: ", link_url, " new link: ", clean_link)
         if clean_link is not None:
             if clean_link.endswith("/"):
                 clean_link = clean_link[:-1]
@@ -99,7 +99,7 @@ class SiteDownloadSpider(scrapy.Spider):
 
                 # print(link, link_url)
                 clean_link = self.createCleanLink(link_url, True)
-                print("old: ", link_url, " new: ", clean_link)
+                # print("old: ", link_url, " new: ", clean_link)
 
                 if clean_link:
                     clean_links.append(clean_link)
@@ -160,7 +160,7 @@ class SiteDownloadSpider(scrapy.Spider):
         for comment in soup.findAll(string=lambda text: isinstance(text, Comment)):
             comment.extract()
 
-        for script in soup(["script", "style", "link", "meta", "symbol", "svg", "form", "footer"]):
+        for script in soup(["script", "style", "link", "meta", "symbol", "svg", "form", "footer", "button"]):
             script.extract()
 
         # Find all elements with class attribute
@@ -176,12 +176,11 @@ class SiteDownloadSpider(scrapy.Spider):
                 new_href = self.createCleanLink(current_href, False)
                 if new_href != current_href:
                     tag['href'] = new_href
-                    print("in save html, link cleanup. old link: ",
-                          current_href, " new link: ", new_href)
-                else:
-                    print('same href')
-            else:
-                print("no href")
+                    # print("in save html, link cleanup. old link: ",current_href, " new link: ", new_href)
+                # else:
+                #    print('same href')
+            # else:
+            #    print("no href")
 
         clean_html = soup.prettify()
 
@@ -238,17 +237,21 @@ class SiteDownloadSpider(scrapy.Spider):
         url_info = urlparse(url)
         if url_info.path:
             file_info = os.path.splitext(url_info.path)
-            file_info[0] = file_info[0].replace("/", "_")
+            fileName = file_info[0]
+            if fileName.startswith("/"):
+                fileName = fileName[1:]
+            fileName = fileName.replace("/", "_")
+
             fileNameBase = 'text/' + \
-                self.BASE_URL_DETAILS.netloc + '/' + file_info[0]
+                self.BASE_URL_DETAILS.netloc + '/' + fileName
         else:
             fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/home'
 
-        if ifSaveHTML:
-            self.saveSimplifiedHTML(response, fileNameBase + ".html")
+        # if ifSaveHTML:
+        self.saveSimplifiedHTML(response, fileNameBase + ".html")
 
         # always save the text file
-        self.saveTextFile(response, fileNameBase + ".txt")
+        # self.saveTextFile(response, fileNameBase + ".txt")
 
         # if the current page is not deep enough in the depth hierarchy, download more content
         if depth < self.MAX_DEPTH:
@@ -258,11 +261,11 @@ class SiteDownloadSpider(scrapy.Spider):
             # tee up new links for traversal
             for link in subLinks:
                 if link not in self.visited_links:
-                    print("New link found: ", link)
+                    # print("New link found: ", link)
                     self.visited_links.add(link)
                     yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1})
-                else:
-                    print("Previously visited link: ", link)
+                # else:
+                #    print("Previously visited link: ", link)
 
 
 start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
