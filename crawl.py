@@ -251,7 +251,7 @@ class SiteDownloadSpider(scrapy.Spider):
         self.saveSimplifiedHTML(response, fileNameBase + ".html")
 
         # always save the text file
-        # self.saveTextFile(response, fileNameBase + ".txt")
+        self.saveTextFile(response, fileNameBase + ".txt")
 
         # if the current page is not deep enough in the depth hierarchy, download more content
         if depth < self.MAX_DEPTH:
