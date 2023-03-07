@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from scrapy.selector import Selector
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup, Comment
+from bs4 import BeautifulSoup, CData, Comment, NavigableString, Tag
 from scrapy.crawler import CrawlerProcess
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
@@ -15,6 +15,36 @@ from scrapy.utils.log import configure_logging
 from config_parser import parse_config
 import PyPDF2
 from lxml import html
+
+
+class MyBeautifulSoup(BeautifulSoup):
+    def _all_strings(self, strip=False, types=(NavigableString, CData)):
+        # verify types [ADDED]
+        if hasattr(types, '__iter__'):
+            types = tuple([t for t in types if isinstance(t, type)])
+        if types is None:
+            types = NavigableString
+        if not types or not isinstance(types, (type, tuple)):
+            types = (NavigableString, CData)
+
+        for descendant in self.descendants:
+            # return "a" string representation if we encounter it
+
+            if isinstance(descendant, Tag) and descendant.name == 'a' and descendant.get('href', '') != '#':
+                yield str('{} {} '.format(descendant.text, descendant.get('href', '')))
+
+            # skip an inner text node inside "a"
+            if isinstance(descendant, NavigableString) and descendant.parent.name == 'a':
+                continue
+
+            if not isinstance(descendant, types):
+                continue  # default behavior [EDITED]
+
+            if strip:
+                descendant = descendant.strip()
+                if len(descendant) == 0:
+                    continue
+            yield descendant
 
 
 class SiteDownloadSpider(scrapy.Spider):
@@ -151,10 +181,17 @@ class SiteDownloadSpider(scrapy.Spider):
             f.write(text)
             # print('length of text is: ', len(text))
 
-    def saveSimplifiedHTML(self, response, fileName):
+    def saveSimplifiedHTML(self, response, fileNameBase):
+
+        if not fileNameBase:
+            print("fileName in saveSimplifiedHTML is empty")
+            return
 
         body = scrapy.Selector(response).xpath('//body').getall()
-        soup = BeautifulSoup(''.join(body), 'html.parser')
+        # Print the header of the page
+        title = response.xpath('//head/title/text()').get()
+
+        soup = MyBeautifulSoup(''.join(body), 'html.parser')
 
         # Remove all comments
         for comment in soup.findAll(string=lambda text: isinstance(text, Comment)):
@@ -183,37 +220,33 @@ class SiteDownloadSpider(scrapy.Spider):
             #    print("no href")
 
         clean_html = soup.prettify()
+        with open(fileNameBase + ".html", "w", encoding="UTF-8") as f:
+            f.write(clean_html)
+            f.close()
 
-        if fileName:
-            with open(fileName, "w", encoding="UTF-8") as f:
-                f.write(clean_html)
-                f.close()
-        else:
-            print("fileName in saveSimplifiedHTML is empty")
+        self.saveTextFile(title, soup, fileNameBase)
 
-    def saveTextFile(self, response, fileName):
+    def saveTextFile(self, title, soup, fileNameBase):
 
-        if not fileName:
+        if not fileNameBase:
             print("file name in saveTextFile is empty")
             return
 
-        with open(fileName, "w", encoding="UTF-8") as f:
+        with open(fileNameBase + ".txt", "w", encoding="UTF-8") as f:
 
             # Print the header of the page
             # header = response.xpath('//head').get()
             # f.write(f'Header of {response.url}:\n{header}\n\n')
 
             # Print the header of the page
-            title = response.xpath('//head/title/text()').get()
-            f.write(f'{title}\n\n')
+            if title:
+                f.write(f'{title}\n\n')
 
             # Print the footer of the page
             # footer = response.xpath('//footer').get()
             # f.write(f'Footer of {response.url}:\n{footer}\n\n')
 
             # Print the plain text version of the body of the page
-            body = scrapy.Selector(response).xpath('//body').getall()
-            soup = BeautifulSoup(''.join(body), 'html.parser')
             # body_text = ''.join([text.strip() for text in body])
             body_text = self.remove_newlines(soup.get_text())
             # body_text = ''.join(response.selector.select(
@@ -248,10 +281,7 @@ class SiteDownloadSpider(scrapy.Spider):
             fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/home'
 
         # if ifSaveHTML:
-        self.saveSimplifiedHTML(response, fileNameBase + ".html")
-
-        # always save the text file
-        self.saveTextFile(response, fileNameBase + ".txt")
+        self.saveSimplifiedHTML(response, fileNameBase)
 
         # if the current page is not deep enough in the depth hierarchy, download more content
         if depth < self.MAX_DEPTH:
