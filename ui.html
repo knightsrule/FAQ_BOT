@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Chat Window</title>
+    <style>
+      body {
+        font-family: Garamond, serif;
+        background-color: lightblue;
+      }
+      
+      #chat-window {
+        width: 100%;
+        max-width: 600px;
+        height: 400px;
+        overflow: auto;
+        border: 1px solid black;
+        border-radius: 10px;
+        padding: 10px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+      
+      .message {
+        margin-bottom: 10px;
+      }
+      
+      .message-sent {
+        text-align: right;
+        color: green;
+      }
+      
+      .message-received {
+        text-align: left;
+        color: blue;
+      }
+      
+      #input-container {
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      
+      input[type="text"], button {
+        margin-top: 10px;
+        border-radius: 10px;
+        border: none;
+        padding: 5px;
+      }
+      
+      input[type="text"] {
+        width: 100%;
+        max-width: 400px;
+      }
+      
+      button {
+        margin-left: 10px;
+        background-color: white;
+        border: 1px solid black;
+        cursor: pointer;
+      }
+    </style>
+    <script>
+    function sendMessage() {
+      const message = document.getElementById("message").value;
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "http://127.0.0.1:5000/query");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.onload = function() {
+        //const response = JSON.parse(xhr.responseText);
+        const chatWindow = document.getElementById("chat-window");
+        const responseBubble = document.createElement("div");
+        responseBubble.classList.add("message");
+        responseBubble.classList.add("message-received");
+        const responseText = document.createElement("div");
+        responseText.innerHTML = xhr.responseText;
+        responseBubble.appendChild(responseText);
+        chatWindow.appendChild(responseBubble);
+      }
+      const data = JSON.stringify({ query: message });
+      xhr.send(data);
+      const chatWindow = document.getElementById("chat-window");
+      const messageBubble = document.createElement("div");
+      messageBubble.classList.add("message");
+      messageBubble.classList.add("message-sent");
+      const messageText = document.createElement("div");
+      messageText.innerHTML = message;
+      messageBubble.appendChild(messageText);
+      chatWindow.appendChild(messageBubble);
+      document.getElementById("message").value = "";
+    }
+    </script>
+  </head>
+  <body>
+    <div id="chat-window"></div>
+    <div style="width: 100%; max-width: 600px; margin: 0 auto; display: flex; justify-content: center;">
+      <div id="input-container">
+        <input type="text" id="message" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </body>
+</html>
