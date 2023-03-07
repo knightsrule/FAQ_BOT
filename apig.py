@@ -1,3 +1,5 @@
+#python -m flask --app apig run 
+
 from flask import Flask, jsonify, request
 import openai
 from openai.embeddings_utils import distances_from_embeddings
@@ -11,7 +13,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # initialize the CORS extension
 
-start_url = 'https://www.mhs.net/'
+start_url = 'https://www.gupshup.io'
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc
