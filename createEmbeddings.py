@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 from config_parser import parse_config
 
 start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
+UI_MODE = False
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc
@@ -80,8 +81,9 @@ df.columns = ['title', 'text']
 # Tokenize the text and save the number of tokens to a new column
 df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
 
-# Visualize the distribution of the number of tokens per row using a histogram
-df.n_tokens.hist()
+if UI_MODE:
+    # Visualize the distribution of the number of tokens per row using a histogram
+    df.n_tokens.hist()
 
 ################################################################################
 # Step 8
@@ -151,7 +153,9 @@ for row in df.iterrows():
 
 df = pd.DataFrame(shortened, columns=['text'])
 df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-df.n_tokens.hist()
+
+if UI_MODE:
+    df.n_tokens.hist()
 
 ################################################################################
 # Step 10
