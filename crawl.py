@@ -154,7 +154,7 @@ class SiteDownloadSpider(scrapy.Spider):
         else:
             print('no base url found')
 
-    def parsePDF(self, response):
+    def parsePDF(self, response, fileNameBase, ifSaveOriginal):
         # Save text from the url to a <url>.txt file
 
         url = response.url
@@ -164,7 +164,18 @@ class SiteDownloadSpider(scrapy.Spider):
 
         pdf_bytes = response.body
 
-        fileName = 'text/' + self.BASE_URL_DETAILS.netloc + '/secPDF.txt'
+        if ifSaveOriginal:
+            #save the content as a PDF file
+            print('save PDF')
+            fileName = fileNameBase +  '.pdf'
+            # print("PDF file name is: ", fileName)
+            # print('response length is: ', len(pdf_bytes))
+            with open(fileName, "wb") as f:
+                f.write(pdf_bytes)
+                f.close
+
+        #now save the text version of the file
+        fileName = fileNameBase +  '.txt'
         # print("PDF file name is: ", fileName)
         # print('response length is: ', len(pdf_bytes))
 
@@ -179,9 +190,8 @@ class SiteDownloadSpider(scrapy.Spider):
                 # print("page : ", i+1, " size: ", len(page.extract_text()))
 
             f.write(text)
-            # print('length of text is: ', len(text))
 
-    def saveSimplifiedHTML(self, response, fileNameBase):
+    def saveSimplifiedHTML(self, response, fileNameBase, ifSaveOriginal):
 
         if not fileNameBase:
             print("fileName in saveSimplifiedHTML is empty")
@@ -219,11 +229,13 @@ class SiteDownloadSpider(scrapy.Spider):
             # else:
             #    print("no href")
 
-        clean_html = soup.prettify()
-        with open(fileNameBase + ".html", "w", encoding="UTF-8") as f:
-            f.write(clean_html)
-            f.close()
+        if ifSaveOriginal:
+            clean_html = soup.prettify()
+            with open(fileNameBase + ".html", "w", encoding="UTF-8") as f:
+                f.write(clean_html)
+                f.close()
 
+        #now save the text version of the file
         self.saveTextFile(title, soup, fileNameBase)
 
     def saveTextFile(self, title, soup, fileNameBase):
@@ -261,9 +273,11 @@ class SiteDownloadSpider(scrapy.Spider):
         if depth > self.MAX_DEPTH:
             print(url, ' at depth ', depth, " is too deep")
             return
-        else:
-            print("processing: ", url)
 
+        print("processing: ", url)
+        content_type = response.headers.get('Content-Type').decode('utf-8')
+        print(f'Content type: {content_type}')    
+        
         if url.endswith('/'):
             url = url[:-1]
 
@@ -280,22 +294,24 @@ class SiteDownloadSpider(scrapy.Spider):
         else:
             fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/home'
 
-        # if ifSaveHTML:
-        self.saveSimplifiedHTML(response, fileNameBase)
+        if "pdf" in content_type:
+            self.parsePDF(response, fileNameBase, True)
+        elif "html" in content_type:
+            self.saveSimplifiedHTML(response, fileNameBase, True)
 
-        # if the current page is not deep enough in the depth hierarchy, download more content
-        if depth < self.MAX_DEPTH:
-            # get links from the current page
-            subLinks = self.get_domain_hyperlinks(response)
+            # if the current page is not deep enough in the depth hierarchy, download more content
+            if depth < self.MAX_DEPTH:
+                # get links from the current page
+                subLinks = self.get_domain_hyperlinks(response)
 
-            # tee up new links for traversal
-            for link in subLinks:
-                if link not in self.visited_links:
-                    # print("New link found: ", link)
-                    self.visited_links.add(link)
-                    yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1})
-                # else:
-                #    print("Previously visited link: ", link)
+                # tee up new links for traversal
+                for link in subLinks:
+                    if link not in self.visited_links:
+                        # print("New link found: ", link)
+                        self.visited_links.add(link)
+                        yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1})
+                    # else:
+                    #    print("Previously visited link: ", link)
 
 
 start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
