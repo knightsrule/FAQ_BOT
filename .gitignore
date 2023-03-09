@@ -4,3 +4,6 @@ py_env
 __pycache__
 .DS_Store
 *.json
+*.db
+processed*
+*.log

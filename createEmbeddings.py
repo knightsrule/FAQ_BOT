@@ -12,13 +12,29 @@ import numpy as np
 import json
 from urllib.parse import urlparse
 from config_parser import parse_config
+import sqlite3
+import pickle 
 
 start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
 UI_MODE = False
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc
+dbConnection = sqlite3.connect(local_domain + ".db")
+cursor = dbConnection.cursor()
 
+def createTable():
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='embeddings'")
+    table_exists = cursor.fetchone() is not None
+    
+    if not table_exists:
+        cursor.execute("CREATE TABLE embeddings (domain TEXT, page TEXT, text TEXT, num_tokens INTEGER, embeddings BLOB)")
+        dbConnection.commit()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='embeddings'")
+        table_name = cursor.fetchone()[0]
+        print(table_name)
+
+createTable()
 
 def remove_newlines(serie):
     serie = serie.str.replace('\n', ' ')
@@ -42,58 +58,10 @@ if not os.path.exists("processed"):
 if not os.path.exists("processed/"+local_domain+"/"):
     os.mkdir("processed/" + local_domain + "/")
 
-
-# Get all the text files in the text directory
-for file in os.listdir("text/" + local_domain + "/"):
-
-    file_info = list(os.path.splitext(file))
-    if file_info[1] and file_info[1] == ".txt":
-
-        # Open the file and read the text
-        with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
-            text = f.read()
-            # print(file, '\n', file[11:-4]
-            #      .replace('-', ' ')
-            #      .replace('_', ' ')
-            #      .replace('#update', ''), '\n\n')
-
-            # Omit the first 11 lines and the last 4 lines, then replace -, _, and #update with spaces.
-            texts.append((file, text))
-
-# Create a dataframe from the list of texts
-df = pd.DataFrame(texts, columns=['fname', 'text'])
-
-# Set the text column to be the raw text with the newlines removed
-df['text'] = df.fname + ". " + remove_newlines(df.text)
-df.to_csv('processed/' + local_domain + '/scraped.csv')
-df.head()
-
-################################################################################
-# Step 7
-################################################################################
-
-# Load the cl100k_base tokenizer which is designed to work with the ada-002 model
 tokenizer = tiktoken.get_encoding("cl100k_base")
-
-df = pd.read_csv('processed/' + local_domain + '/scraped.csv', index_col=0)
-df.columns = ['title', 'text']
-
-# Tokenize the text and save the number of tokens to a new column
-df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-
-if UI_MODE:
-    # Visualize the distribution of the number of tokens per row using a histogram
-    df.n_tokens.hist()
-
-################################################################################
-# Step 8
-################################################################################
-
 max_tokens = 500
 
 # Function to split the text into chunks of a maximum number of tokens
-
-
 def split_into_many(text, max_tokens=max_tokens):
 
     # Split the text into sentences
@@ -129,39 +97,34 @@ def split_into_many(text, max_tokens=max_tokens):
 
     return chunks
 
+# Get all the text files in the text directory
+for file in os.listdir("text/" + local_domain + "/"):
 
-shortened = []
+    file_info = list(os.path.splitext(file))
+    if file_info[1] and file_info[1] == ".txt":
 
-# Loop through the dataframe
-for row in df.iterrows():
+        texts.clear()
+        # Open the file and read the text
+        with open("text/" + local_domain + "/" + file, "r", encoding="UTF-8") as f:
+            text = f.read()
+            n_tokens = len(tokenizer.encode(text))
+            if n_tokens > max_tokens:
+                chunks = split_into_many(text)
+                for chunk in chunks:
+                    texts.append((chunk, len(tokenizer.encode(chunk))))
+            else:                           
+                texts.append((text, n_tokens))
 
-    # If the text is None, go to the next row
-    if row[1]['text'] is None:
-        continue
+        for text_tuple in texts:
+            text = text_tuple[0]
+            n_tokens = text_tuple[1]
+            embedding = openai.Embedding.create(input=text, engine='text-embedding-ada-002')
+            embedding_bytes = pickle.dumps(embedding)
 
-    # If the number of tokens is greater than the max number of tokens, split the text into chunks
-    if row[1]['n_tokens'] > max_tokens:
-        shortened += split_into_many(row[1]['text'])
+            cmd = "INSERT INTO embeddings (domain, page, text, num_tokens, embeddings) VALUES (?, ?, ?, ?, ?)"
+            cursor.execute(cmd, (local_domain, file_info[0], text, n_tokens, embedding_bytes))
 
-    # Otherwise, add the text to the list of shortened texts
-    else:
-        shortened.append(row[1]['text'])
+        dbConnection.commit()
 
-################################################################################
-# Step 9
-################################################################################
-
-df = pd.DataFrame(shortened, columns=['text'])
-df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
-
-if UI_MODE:
-    df.n_tokens.hist()
-
-################################################################################
-# Step 10
-################################################################################
-
-df['embeddings'] = df.text.apply(lambda x: openai.Embedding.create(
-    input=x, engine='text-embedding-ada-002')['data'][0]['embedding'])
-df.to_csv('processed/' + local_domain + '/embeddings.csv')
-df.head()
+cursor.close()
+dbConnection.close()

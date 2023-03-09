@@ -1,3 +1,4 @@
+import datetime
 import io
 import json
 import os
@@ -276,8 +277,13 @@ class SiteDownloadSpider(scrapy.Spider):
 
         print("processing: ", url)
         content_type = response.headers.get('Content-Type').decode('utf-8')
-        print(f'Content type: {content_type}')    
-        
+        last_modified = response.headers.get('Last-Modified')
+        if last_modified:
+            last_modified = last_modified.decode('utf-8')
+            last_modified_datetime = datetime.strptime(last_modified, '%a, %d %b %Y %H:%M:%S %Z')
+            print(f'Last modified: {last_modified_datetime}')
+        else:
+            print('Last modified date not available')        
         if url.endswith('/'):
             url = url[:-1]
 

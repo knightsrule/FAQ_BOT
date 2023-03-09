@@ -15,17 +15,31 @@ setContainers = {"main", "label", "div", "header",
 
 
 class MyBeautifulSoup(BeautifulSoup):
-    def _all_strings(self, bs4_element, strip=False, types=(NavigableString, CData)):
-        strings = []
-        for child in bs4_element.children:
-            if isinstance(child, Tag) and child.name == 'a':
-                continue
-            elif isinstance(child, types):
-                strings.extend(self._all_strings(child, strip, types))
-            else:
-                strings.append(child)
-        return strings
+    def _all_strings(self, strip=False, types=(NavigableString, CData)):
+        # verify types [ADDED]
+        if hasattr(types,'__iter__'):
+            types = tuple([t for t in types if isinstance(t,type)])
+        if types is None: types = NavigableString
+        if not types or not isinstance(types, (type, tuple)):
+            types = (NavigableString, CData)
 
+        for descendant in self.descendants:
+            # return "a" string representation if we encounter it
+
+            if isinstance(descendant, Tag) and descendant.name == 'a':
+                yield str('{} {} '.format(descendant.get_text(), descendant.get('href', '')))
+
+            # skip an inner text node inside "a"
+            if isinstance(descendant,NavigableString) and descendant.parent.name == 'a':
+                continue
+            
+            if not isinstance(descendant, types): continue # default behavior [EDITED]
+
+            if strip:
+                descendant = descendant.strip()
+                if len(descendant) == 0:
+                    continue
+            yield descendant
 
 def convertToText(soup, fileName):
 
@@ -46,32 +60,31 @@ def convertToText(soup, fileName):
         f.close()
 
 
-html = "<html><body><h1>Heading</h1><p>Paragraph 1 with foo.</p><p>Paragraph 2 without.</p><a href='https://example.com'>Link</a></body></html>"
-soup = MyBeautifulSoup(html, 'html.parser')
-print(soup.get_text())
+html = "<html><body><h1>Heading<a href='https://example.com'>Link</a></h1><p>Paragraph 1 with foo.</p><p>Paragraph 2 without.</p><a href='https://example.com'>Link</a></body></html>"
+#soup = MyBeautifulSoup(html, 'html.parser')
+#print(soup.get_text())
 
 start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
 url_info = urlparse(start_url)
-# if url_info.path:
-#
-#    dirPath = 'text/' + url_info.netloc
-#    # Get all the text files in the text directory
-#    index = 1
+if url_info.path:
+
+    dirPath = 'text/' + url_info.netloc
+    # Get all the text files in the text directory
+    index = 1
 
 
-#    for file in os.listdir(dirPath):
-#
-#        file_info = list(os.path.splitext(file))
-#        if file_info[1] and file_info[1] == ".html":
-#            with open(dirPath + "/" + file) as fp:
+    for file in os.listdir(dirPath):
 
-# with open(dirPath + "/" + file_info[0] + "-2.txt", "w", encoding="UTF-8") as f:
-#
-#    f.write(body_text)
-#    f.close()
+        file_info = list(os.path.splitext(file))
+        if file_info[1] and file_info[1] == ".html":
+            with open(dirPath + "/" + file) as fp:
+                soup = MyBeautifulSoup(fp, 'html.parser')
+                fp.close()
 
-# soup = BeautifulSoup(fp, 'html.parser')
-# fp.close()
+                with open(dirPath + "/" + file_info[0] + "-2.log", "w", encoding="UTF-8") as f:
+                    f.write(soup.get_text())
+                    f.close()
+
 
 # children = list(soup.find_all())
 # unique_names = set()
