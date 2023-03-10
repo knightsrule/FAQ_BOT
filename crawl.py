@@ -115,15 +115,13 @@ class SiteDownloadSpider(scrapy.Spider):
 
         return clean_link
 
-    def get_domain_hyperlinks(self, response):
+    def get_domain_hyperlinks(self, soup):
 
         clean_links = []
 
         # Find all hyperlinks on the webpage and follow them
-        for link in response.xpath('//a/@href'):
-
-            # link_url = response.urljoin(link.extract())
-            link_url = link.extract()
+        for link in soup.find_all('a'):
+            link_url = link.get('href')
 
             if link_url and not (link_url.startswith("#") or link_url.startswith("mailto:") or link_url.startswith("tel:")):
 
@@ -191,17 +189,11 @@ class SiteDownloadSpider(scrapy.Spider):
 
             f.write(text)
 
-    def saveSimplifiedHTML(self, response, fileNameBase, ifSaveOriginal):
+    def createSimplifiedHTML(self, response, soup):
 
-        if not fileNameBase:
-            print("fileName in saveSimplifiedHTML is empty")
-            return
 
-        body = scrapy.Selector(response).xpath('//body').getall()
         # Print the header of the page
         title = response.xpath('//head/title/text()').get()
-
-        soup = MyBeautifulSoup(''.join(body), 'html.parser')
 
         # Remove all comments
         for comment in soup.findAll(string=lambda text: isinstance(text, Comment)):
@@ -229,11 +221,16 @@ class SiteDownloadSpider(scrapy.Spider):
             # else:
             #    print("no href")
 
-        if ifSaveOriginal:
-            clean_html = soup.prettify()
-            with open(fileNameBase + ".html", "w", encoding="UTF-8") as f:
-                f.write(clean_html)
-                f.close()
+    
+    def saveSimplifiedHTML(self, title, soup, fileNameBase):
+        if not fileNameBase:
+            print("fileName in saveSimplifiedHTML is empty")
+            return
+        
+        clean_html = soup.prettify()
+        with open(fileNameBase + ".html", "w", encoding="UTF-8") as f:
+            f.write(clean_html)
+            f.close()
 
         #now save the text version of the file
         self.saveTextFile(title, soup, fileNameBase)
@@ -297,21 +294,27 @@ class SiteDownloadSpider(scrapy.Spider):
         if "pdf" in content_type:
             self.parsePDF(response, fileNameBase, True)
         elif "html" in content_type:
-            self.saveSimplifiedHTML(response, fileNameBase, True)
+            body = scrapy.Selector(response).xpath('//body').getall()
+            soup = MyBeautifulSoup(''.join(body), 'html.parser')
+            self.createSimplifiedHTML(response, soup)
+
+            self.saveSimplifiedHTML(response, soup, fileNameBase)
 
             # if the current page is not deep enough in the depth hierarchy, download more content
             if depth < self.MAX_DEPTH:
                 # get links from the current page
-                subLinks = self.get_domain_hyperlinks(response)
-
+                subLinks = self.get_domain_hyperlinks(soup)
+                print(subLinks)
                 # tee up new links for traversal
                 for link in subLinks:
-                    if link not in self.visited_links:
-                        # print("New link found: ", link)
-                        self.visited_links.add(link)
-                        yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1})
-                    # else:
-                    #    print("Previously visited link: ", link)
+                    if link is not None and not link.startswith('#'):
+                        print("new link is: '", link, "'")
+                        if link not in self.visited_links:
+                            # print("New link found: ", link)
+                            self.visited_links.add(link)
+                            yield scrapy.Request(url=link, callback=self.parse, meta={'depth': depth + 1})
+                        # else:
+                        #    print("Previously visited link: ", link)
 
 
 start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
