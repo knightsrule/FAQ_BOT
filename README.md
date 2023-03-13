@@ -12,3 +12,10 @@
 10. STEP 2: Run "python createEmbeddings.py -c=<new config file>". This will create embeddings.csv and scraped.csv files under "processed"
 11. STEP 3: Assuming no errors, run "python answer.py -c=<new config file>"
 12. Hit enter on a new line to exit
+
+If needed:
+pip install matplotlib 
+pip install plotly  
+pip install scipy
+pip install -U scikit-learn
+ 
