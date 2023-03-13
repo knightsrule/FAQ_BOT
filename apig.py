@@ -13,7 +13,8 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # initialize the CORS extension
 
-start_url = 'https://www.mhs.net/'
+start_url = 'https://www.mower.com'
+start_url = 'https://www.televox.com'
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc
