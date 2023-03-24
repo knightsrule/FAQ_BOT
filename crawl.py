@@ -166,17 +166,16 @@ class SiteDownloadSpider(scrapy.Spider):
 
         pdf_bytes = response.body
 
-        if ifSaveOriginal:
-            #save the content as a PDF file
-            fileName = self.BASE_DIRECTORY + 'html/' + fileNameBase +  '.pdf'
-            # print("PDF file name is: ", fileName)
-            # print('response length is: ', len(pdf_bytes))
-            with open(fileName, "wb") as f:
-                f.write(pdf_bytes)
-                f.close
+        #save the content as a PDF file
+        fileName = self.BASE_DIRECTORY + 'html/' + fileNameBase +  '.pdf'
+        # print("PDF file name is: ", fileName)
+        # print('response length is: ', len(pdf_bytes))
+        with open(fileName, "wb") as f:
+            f.write(pdf_bytes)
+            f.close
 
         #now save the text version of the file
-        fileName = self.BASE_DIRECTORY + 'text/' + fileNameBase +  '.txt'
+        fileName = self.BASE_DIRECTORY + 'txt/' + fileNameBase +  '.txt'
         # print("PDF file name is: ", fileName)
         # print('response length is: ', len(pdf_bytes))
 
@@ -225,6 +224,7 @@ class SiteDownloadSpider(scrapy.Spider):
             # else:
             #    print("no href")
 
+        return title
     
     def saveSimplifiedHTML(self, title, soup, fileNameBase):
         if not fileNameBase:
@@ -299,9 +299,9 @@ class SiteDownloadSpider(scrapy.Spider):
         elif "html" in content_type:
             body = scrapy.Selector(response).xpath('//body').getall()
             soup = MyBeautifulSoup(''.join(body), 'html.parser')
-            self.createSimplifiedHTML(response, soup)
+            title = self.createSimplifiedHTML(response, soup)
 
-            self.saveSimplifiedHTML(response, soup, fileNameBase)
+            self.saveSimplifiedHTML(title, soup, fileNameBase)
 
             # if the current page is not deep enough in the depth hierarchy, download more content
             if depth < self.MAX_DEPTH:
