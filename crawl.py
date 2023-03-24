@@ -12,7 +12,7 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
-from config_parser import parse_config
+from config_parser import ConfigReader
 import PyPDF2
 from lxml import html
 
@@ -58,13 +58,13 @@ class SiteDownloadSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(SiteDownloadSpider, self).__init__(*args, **kwargs)
 
+        print(args)
+        print (getattr(self, 'depth'), type(getattr(self, 'depth')))
+
         self.MAX_DEPTH = int(getattr(self, 'depth', 3))
         self.BASE_URL = getattr(self, 'url', '')
         self.BASE_URL_DETAILS = urlparse(self.BASE_URL)
         self.BASE_DIRECTORY =   "text/"+self.BASE_URL_DETAILS.netloc+"/"
-
-        self.secPDFURL = getattr(self, 'secPDFURL', '')
-        self.ifSaveHTML = getattr(self, 'ifSaveHTML', False)
 
         # print("in the constructor: ", self.BASE_URL, self.MAX_DEPTH)
         self.visited_links = set()
@@ -319,8 +319,10 @@ class SiteDownloadSpider(scrapy.Spider):
                         # else:
                         #    print("Previously visited link: ", link)
 
-
-start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
+config = ConfigReader()
+config.loadConfig()
+start_url = config.readConfigParam('start_url', '')
+depth = config.readConfigParam('depth', 2)
 
 # logging.getLogger().setLevel(log_level)
 # configure_logging({'LOG_LEVEL': log_level})
@@ -329,11 +331,5 @@ start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
 # Create a new Scrapy process
 process = CrawlerProcess()
 
-# process = CrawlerProcess({
-#    'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'
-# })
-
-process.crawl(SiteDownloadSpider, input='inputargument',
-              url=start_url, depth=depth, secPDFURL=secPDFURL, ifSaveHTML=ifSaveHTML)
-
+process.crawl(SiteDownloadSpider, input='inputargument', url=start_url, depth=depth)
 process.start()  # the script will block here until the crawling is finished

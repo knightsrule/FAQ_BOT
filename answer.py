@@ -4,9 +4,11 @@ import pandas as pd
 import numpy as np
 import json
 from urllib.parse import urlparse
-from config_parser import parse_config
+from config_parser import ConfigReader
 
-start_url, depth, log_level, secPDFURL, ifSaveHTML = parse_config()
+config = ConfigReader()
+config.loadConfig()
+start_url = config.readConfigParam('start_url', '')
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc

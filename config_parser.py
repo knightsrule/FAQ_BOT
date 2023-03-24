@@ -1,26 +1,26 @@
 import argparse
 import json
 
+class ConfigReader():
+ 
+    def __init__(self, *args, **kwargs):
+        self.config = {}
 
-def parse_config():
-    # Define the command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
+    def loadConfig(self):
+        # Define the command line arguments
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
         "-config", "-c", required=True, help="config file with base_url, depth and log_level")
 
-    # Parse the command line arguments
-    args = parser.parse_args()
+        # Parse the command line arguments
+        args = parser.parse_args()
 
-    configFilePath = args.config
-    configFile = open(configFilePath, "r")
-    config = json.loads(configFile.read())
-    configFile.close()
+        filepath = args.config
+        configFile = open(filepath, "r")
+        self.config = json.loads(configFile.read())
+        configFile.close()
 
-    # Define root domain to crawl
-    start_url = config["start_url"]
-    depth = config.get("depth", 3)
-    log_level = config.get('log_level', "DEBUG")
-    secPDFURL = config.get("secPDFURL", "")
-    ifSaveHTML = config.get("ifSaveHTML", False)
+    def readConfigParam(self, param, defaultValue):
+        value = self.config.get(param, defaultValue)
+        return value
     
-    return start_url, depth, log_level, secPDFURL, ifSaveHTML
