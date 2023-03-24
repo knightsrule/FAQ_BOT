@@ -61,6 +61,8 @@ class SiteDownloadSpider(scrapy.Spider):
         self.MAX_DEPTH = int(getattr(self, 'depth', 3))
         self.BASE_URL = getattr(self, 'url', '')
         self.BASE_URL_DETAILS = urlparse(self.BASE_URL)
+        self.BASE_DIRECTORY =   "text/"+self.BASE_URL_DETAILS.netloc+"/"
+
         self.secPDFURL = getattr(self, 'secPDFURL', '')
         self.ifSaveHTML = getattr(self, 'ifSaveHTML', False)
 
@@ -135,20 +137,22 @@ class SiteDownloadSpider(scrapy.Spider):
         # Return the list of hyperlinks that are within the same domain
         return list(set(clean_links))
 
+    def checkAndCreateDirectory(self, dirPath):
+        # Create a directory to store the text files
+        if not os.path.exists(dirPath):
+            os.mkdir(dirPath)
+
     def start_requests(self):
 
         if self.BASE_URL:
 
             # Create a directory to store the text files
-            if not os.path.exists("text/"):
-                os.mkdir("text/")
-
-            if not os.path.exists("text/"+self.BASE_URL_DETAILS.netloc+"/"):
-                os.mkdir("text/" + self.BASE_URL_DETAILS.netloc + "/")
+            self.checkAndCreateDirectory("text/")
+            self.checkAndCreateDirectory(self.BASE_DIRECTORY)
+            self.checkAndCreateDirectory(self.BASE_DIRECTORY + "html")
+            self.checkAndCreateDirectory(self.BASE_DIRECTORY + "txt")
 
             yield scrapy.Request(url=self.BASE_URL, callback=self.parse, meta={'depth': 1})
-            if self.secPDFURL:
-                yield scrapy.Request(url=self.secPDFURL, callback=self.parsePDF)
         else:
             print('no base url found')
 
@@ -164,8 +168,7 @@ class SiteDownloadSpider(scrapy.Spider):
 
         if ifSaveOriginal:
             #save the content as a PDF file
-            print('save PDF')
-            fileName = fileNameBase +  '.pdf'
+            fileName = self.BASE_DIRECTORY + 'html/' + fileNameBase +  '.pdf'
             # print("PDF file name is: ", fileName)
             # print('response length is: ', len(pdf_bytes))
             with open(fileName, "wb") as f:
@@ -173,7 +176,7 @@ class SiteDownloadSpider(scrapy.Spider):
                 f.close
 
         #now save the text version of the file
-        fileName = fileNameBase +  '.txt'
+        fileName = self.BASE_DIRECTORY + 'text/' + fileNameBase +  '.txt'
         # print("PDF file name is: ", fileName)
         # print('response length is: ', len(pdf_bytes))
 
@@ -199,7 +202,8 @@ class SiteDownloadSpider(scrapy.Spider):
         for comment in soup.findAll(string=lambda text: isinstance(text, Comment)):
             comment.extract()
 
-        for script in soup(["script", "style", "link", "meta", "symbol", "svg", "form", "footer", "button"]):
+        # footer
+        for script in soup(["script", "style", "link", "meta", "symbol", "svg", "form", "button"]):
             script.extract()
 
         # Find all elements with class attribute
@@ -228,7 +232,7 @@ class SiteDownloadSpider(scrapy.Spider):
             return
         
         clean_html = soup.prettify()
-        with open(fileNameBase + ".html", "w", encoding="UTF-8") as f:
+        with open(self.BASE_DIRECTORY + 'html/' + fileNameBase + ".html", "w", encoding="UTF-8") as f:
             f.write(clean_html)
             f.close()
 
@@ -241,7 +245,7 @@ class SiteDownloadSpider(scrapy.Spider):
             print("file name in saveTextFile is empty")
             return
 
-        with open(fileNameBase + ".txt", "w", encoding="UTF-8") as f:
+        with open(self.BASE_DIRECTORY + 'txt/' + fileNameBase + ".txt", "w", encoding="UTF-8") as f:
 
             # Print the header of the page
             # header = response.xpath('//head').get()
@@ -286,10 +290,9 @@ class SiteDownloadSpider(scrapy.Spider):
                 fileName = fileName[1:]
             fileName = fileName.replace("/", "_")
 
-            fileNameBase = 'text/' + \
-                self.BASE_URL_DETAILS.netloc + '/' + fileName
+            fileNameBase = fileName
         else:
-            fileNameBase = 'text/' + self.BASE_URL_DETAILS.netloc + '/home'
+            fileNameBase = 'home'
 
         if "pdf" in content_type:
             self.parsePDF(response, fileNameBase, True)
@@ -304,11 +307,11 @@ class SiteDownloadSpider(scrapy.Spider):
             if depth < self.MAX_DEPTH:
                 # get links from the current page
                 subLinks = self.get_domain_hyperlinks(soup)
-                print(subLinks)
+                #print(subLinks)
                 # tee up new links for traversal
                 for link in subLinks:
                     if link is not None and not link.startswith('#'):
-                        print("new link is: '", link, "'")
+                        #print("new link is: '", link, "'")
                         if link not in self.visited_links:
                             # print("New link found: ", link)
                             self.visited_links.add(link)
