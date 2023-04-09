@@ -1,4 +1,4 @@
-#python -m flask --app apig run 
+# python -m flask --app apig run
 
 from flask import Flask, jsonify, request
 import openai
@@ -15,6 +15,7 @@ CORS(app)  # initialize the CORS extension
 
 start_url = 'https://www.mower.com'
 start_url = 'https://www.televox.com'
+start_url = 'https://www.mhs.net'
 
 # Parse the URL and get the domain
 local_domain = urlparse(start_url).netloc
@@ -22,6 +23,8 @@ local_domain = urlparse(start_url).netloc
 df = {}
 
 # define a function to perform initialization tasks
+
+
 def init_app():
     global df
     print('len of df', len(df))
@@ -33,7 +36,8 @@ def init_app():
     # Step 11
     ################################################################################
 
-    df = pd.read_csv('processed/' + local_domain + '/embeddings.csv', index_col=0)
+    df = pd.read_csv('processed/' + local_domain +
+                     '/embeddings.csv', index_col=0)
     df['embeddings'] = df['embeddings'].apply(eval).apply(np.array)
 
     df.head()
@@ -43,6 +47,7 @@ def init_app():
 @app.before_first_request
 def before_first_request():
     init_app()
+
 
 def create_context(
     question, df, max_len=1800, size="ada"
@@ -120,11 +125,12 @@ def answer_question(
         print(e)
         return ""
 
+
 @app.route('/query', methods=['POST'])
 def doQuery():
     global df
     print('len of df', len(df))
-    
+
     print('in doQuery')
     if request.method == 'POST':
         print('in post')
@@ -132,14 +138,14 @@ def doQuery():
         print('requset is: ', request)
         # read the message body
         message_body = request.get_json()
-        
+
         print('message body is: ', message_body)
         # read the query from body
         query = message_body["query"]
         print('query is: ', query)
 
         response = answer_question(df, question=query, debug=False)
-        
+
         # return a response
         return response
     else:

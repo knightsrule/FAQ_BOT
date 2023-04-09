@@ -24,6 +24,7 @@ UI_MODE = False
 local_domain = urlparse(start_url).netloc
 SRC_DIRECTORY = "text/" + local_domain + "/txt/"
 
+
 def remove_newlines(serie):
     serie = serie.str.replace('\n', ' ')
     serie = serie.str.replace('\\n', ' ')
