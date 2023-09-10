@@ -65,7 +65,8 @@ def create_context(
 
 def answer_question(
     df,
-    model="text-davinci-003",
+    # model="text-davinci-003",
+    model="gpt-3.5-turbo",
     question="Am I allowed to publish model outputs to Twitter, without a human review?",
     max_len=1800,
     size="ada",
@@ -89,17 +90,32 @@ def answer_question(
 
     try:
         # Create a completions using the questin and context
-        response = openai.Completion.create(
-            prompt=f"Answer the question based on the context below, and if the question can't be answered based on the context, say \"I don't know\"\n\nContext: {context}\n\n---\n\nQuestion: {question}\nAnswer:",
-            temperature=0,
+        response = openai.ChatCompletion.create(
+            messages=[
+                {"role": "system", "content": f"Answer the question based on the context below, and if the question can't be answered based on the context, say \"I don't know\"\n\nContext: {context}"},
+                {"role": "user", "content": f"Question: {question}"},
+            ],
+            # messages=[
+            #    {"role": "system", "content": "Answer the question based on the context below, and if the question can't be answered based on the context, say \"I don't know\"\n\n"},
+            #    {"role": "user", "content": f"Context: {context}\n\n---\n\nQuestion: {question}"},
+            # ],
+            temperature=0.2,
             max_tokens=max_tokens,
-            top_p=1,
+            top_p=0.8,
             frequency_penalty=0,
             presence_penalty=0,
             stop=stop_sequence,
             model=model,
         )
-        return response["choices"][0]["text"].strip()
+
+        message = response["choices"][0]["message"]
+        if message:
+            # print(message["role"] + ": " + message["content"])
+            # print(choice)
+            # return response["choices"][0]["text"].strip()
+            return message
+        else:
+            return ""
     except Exception as e:
         print(e)
         return ""
@@ -111,5 +127,5 @@ def answer_question(
 
 text = input("Ask me a question: ")
 while text:
-    print(answer_question(df, question=text, debug=False))
+    print(answer_question(df, question=text, debug=True))
     text = input("Ask me a question: ")
